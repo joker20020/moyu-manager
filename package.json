@@ -1,6 +1,6 @@
 {
   "name": "moyu-manager",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "An Entity Manager for Electron",
   "main": "./out/main/index.js",
   "author": "moyudy",

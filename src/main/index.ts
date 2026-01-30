@@ -606,6 +606,7 @@ function setupHandlers(mainWindow?: BrowserWindow): void {
   )
 }
 
+
 app.whenReady().then(async () => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.moyu.entity-manager')
@@ -614,6 +615,10 @@ app.whenReady().then(async () => {
     optimizer.watchWindowShortcuts(window)
   })
 
+  // Setup IPC handlers
+  const mainWindow = createWindow()
+  setupHandlers(mainWindow)
+
   const recentFiles = await fileService.getRecentFiles()
   if (recentFiles.length > 0) {
     const latestFile = recentFiles[0]
@@ -621,10 +626,6 @@ app.whenReady().then(async () => {
       console.error('Failed to open recent file on startup:', err)
     })
   }
-
-  // Setup IPC handlers
-  const mainWindow = createWindow()
-  setupHandlers(mainWindow)
 
   // 延迟执行自动更新检查（避免影响应用启动速度）
   setTimeout(async () => {
