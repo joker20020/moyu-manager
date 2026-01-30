@@ -191,6 +191,15 @@ const api = {
     quit: createInvoker0<void>(IPC_CHANNELS.SYSTEM.QUIT)
   },
 
+  // 应用更新
+  update: {
+    checkForUpdates: createInvoker1<any, any>(IPC_CHANNELS.UPDATE.CHECK_FOR_UPDATES),
+    downloadUpdate: createInvoker0<void>(IPC_CHANNELS.UPDATE.DOWNLOAD_UPDATE),
+    installUpdate: createInvoker0<void>(IPC_CHANNELS.UPDATE.INSTALL_UPDATE),
+    getUpdateInfo: createInvoker0<any>(IPC_CHANNELS.UPDATE.GET_UPDATE_INFO),
+    cancelUpdate: createInvoker0<void>(IPC_CHANNELS.UPDATE.CANCEL_UPDATE)
+  },
+
   // 工具函数
   utils: {
     ping: createInvoker0<string>(IPC_CHANNELS.UTILS.PING),

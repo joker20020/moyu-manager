@@ -9,6 +9,7 @@ import type {
   PluginDependency
 } from './plugins'
 import type { Dashboard, Widget, DashboardQuery, WidgetQuery } from './dashboards'
+import type { UpdateInfo, UpdateStatus, CheckUpdateOptions } from './update'
 
 // API 命名空间
 export interface EntityManagerAPI {
@@ -199,6 +200,15 @@ export interface EntityManagerAPI {
     reload(): Promise<void>
     restart(): Promise<void>
     quit(): Promise<void>
+  }
+
+  // 应用更新
+  update: {
+    checkForUpdates(options?: CheckUpdateOptions): Promise<UpdateInfo>
+    downloadUpdate(): Promise<void>
+    installUpdate(): Promise<void>
+    getUpdateInfo(): Promise<UpdateStatus>
+    cancelUpdate(): Promise<void>
   }
 
   // 工具函数

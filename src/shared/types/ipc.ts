@@ -151,6 +151,14 @@ export const IPC_CHANNELS = {
     QUIT: 'system:quit'
   },
 
+  UPDATE: {
+    CHECK_FOR_UPDATES: 'update:checkForUpdates',
+    DOWNLOAD_UPDATE: 'update:downloadUpdate',
+    INSTALL_UPDATE: 'update:installUpdate',
+    GET_UPDATE_INFO: 'update:getUpdateInfo',
+    CANCEL_UPDATE: 'update:cancelUpdate'
+  },
+
   // 工具函数
   UTILS: {
     PING: 'utils:ping',

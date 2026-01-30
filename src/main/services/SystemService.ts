@@ -297,7 +297,7 @@ export class SystemService {
 
       const info = await this.gitService.getRepositoryInfo(appPath)
       return {
-        url: info.url || 'https://github.com/yourusername/entity-manager',
+        url: info.url || 'https://github.com/joker20020/moyu-manager',
         branch: info.branch || 'main',
         commit: info.commit?.substring(0, 8) || 'unknown',
         hasChanges: info.hasChanges

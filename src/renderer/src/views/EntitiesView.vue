@@ -565,6 +565,7 @@ import {
   DataAnalysis
 } from '@element-plus/icons-vue'
 import { TableInstance } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 // Store
 const store = useAppStore()

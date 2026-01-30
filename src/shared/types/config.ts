@@ -24,6 +24,8 @@ export interface GeneralConfig {
   autoSave: boolean
   /** 自动保存间隔（分钟） */
   autoSaveInterval: number
+  /** 是否自动检查更新 */
+  autoCheckAppUpdates: boolean
 }
 
 /**
@@ -215,7 +217,8 @@ export function getDefaultAppConfigV2(): AppConfigV2 {
       language: 'zh-CN',
       startupBehavior: 'restore',
       autoSave: true,
-      autoSaveInterval: 1
+      autoSaveInterval: 1,
+      autoCheckAppUpdates: true
     },
 
     appearance: {

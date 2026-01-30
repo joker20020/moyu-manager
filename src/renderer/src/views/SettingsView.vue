@@ -227,6 +227,16 @@
                     </div>
                   </div>
 
+                  <h4>更新设置</h4>
+                  <div class="system-info">
+                    <div class="info-row">
+                      <span class="info-label">自动检查更新:</span>
+                      <span class="info-value">
+                        <el-switch v-model="settings.general.autoCheckAppUpdates" />
+                      </span>
+                    </div>
+                  </div>
+
                   <h4>项目仓库</h4>
                   <div class="info-row">
                     <span class="info-label">GitHub:</span>
@@ -242,10 +252,10 @@
                     <span class="info-label">Commit:</span>
                     <span class="info-value">{{ gitRepoCommit }}</span>
                   </div>
-                  <div class="info-row" v-if="gitRepoHasChanges">
+                  <!-- <div class="info-row" v-if="gitRepoHasChanges">
                     <span class="info-label">状态:</span>
                     <span class="info-value" style="color: #e6a23c">有未提交的更改</span>
-                  </div>
+                  </div> -->
 
                   <h4>开发团队</h4>
                   <p>实体管理器由开源社区开发和维护。</p>
@@ -274,6 +284,115 @@
       <el-button @click="resetSettings" :disabled="loading">重置</el-button>
       <el-button type="primary" @click="saveSettings" :loading="loading">保存设置</el-button>
     </div>
+
+    <!-- 更新对话框 -->
+    <el-dialog
+      v-model="updateDialogVisible"
+      :title="getUpdateDialogTitle()"
+      width="500px"
+      :show-close="!isUpdateInProgress()"
+      :close-on-click-modal="!isUpdateInProgress()"
+      :close-on-press-escape="!isUpdateInProgress()"
+    >
+      <div v-if="updateState === UpdateState.CHECKING" class="update-dialog-content">
+        <div class="update-checking">
+          <el-icon class="loading-icon" :size="32"><Loading /></el-icon>
+          <p>正在检查更新...</p>
+        </div>
+      </div>
+
+      <div v-else-if="updateState === UpdateState.AVAILABLE" class="update-dialog-content">
+        <div class="update-available">
+          <el-alert title="发现新版本" type="success" :closable="false" show-icon />
+          <div class="update-info">
+            <p><strong>当前版本：</strong>{{ updateInfo?.currentVersion || '未知' }}</p>
+            <p><strong>最新版本：</strong>{{ updateInfo?.latestVersion || '未知' }}</p>
+            <p v-if="updateInfo?.releaseDate">
+              <strong>发布日期：</strong>{{ updateInfo.releaseDate }}
+            </p>
+          </div>
+          <div v-if="updateInfo?.releaseNotes" class="release-notes">
+            <h4>更新说明：</h4>
+            <div class="release-notes-content">{{ updateInfo.releaseNotes }}</div>
+          </div>
+          <div class="update-actions">
+            <el-button type="primary" :loading="loading" @click="downloadUpdate">
+              <el-icon><Download /></el-icon>
+              下载更新
+            </el-button>
+            <el-button @click="cancelUpdate">稍后再说</el-button>
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="updateState === UpdateState.DOWNLOADING" class="update-dialog-content">
+        <div class="update-downloading">
+          <h4>正在下载更新...</h4>
+          <el-progress
+            :percentage="updateProgress?.percent || 0"
+            :stroke-width="16"
+            :text-inside="true"
+            :status="getProgressStatus()"
+          />
+          <div v-if="updateProgress" class="download-details">
+            <p>速度：{{ formatBytes(updateProgress.bytesPerSecond) }}/s</p>
+            <p>
+              进度：{{ formatBytes(updateProgress.transferred) }} /
+              {{ formatBytes(updateProgress.total) }}
+            </p>
+          </div>
+          <div class="update-actions">
+            <el-button type="danger" @click="cancelUpdate" :loading="loading">取消下载</el-button>
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="updateState === UpdateState.DOWNLOADED" class="update-dialog-content">
+        <div class="update-downloaded">
+          <el-alert title="更新下载完成" type="success" :closable="false" show-icon />
+          <p>更新已下载完成，准备安装。</p>
+          <div class="update-actions">
+            <el-button type="primary" @click="installUpdate">
+              <el-icon><Check /></el-icon>
+              安装更新
+            </el-button>
+            <el-button @click="cancelUpdate">稍后安装</el-button>
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="updateState === UpdateState.NOT_AVAILABLE" class="update-dialog-content">
+        <div class="update-not-available">
+          <el-alert title="当前已是最新版本" type="info" :closable="false" show-icon />
+          <p>当前版本 {{ updateInfo?.currentVersion || '未知' }} 已是最新版本。</p>
+          <div class="update-actions">
+            <el-button type="primary" @click="closeUpdateDialog">确定</el-button>
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="updateState === UpdateState.ERROR" class="update-dialog-content">
+        <div class="update-error">
+          <el-alert
+            :title="`更新检查失败: ${updateError?.code || '未知错误'}`"
+            type="error"
+            :closable="false"
+            show-icon
+          />
+          <p>{{ updateError?.message || '未知错误' }}</p>
+          <div class="update-actions">
+            <el-button type="primary" @click="retryUpdate">重试</el-button>
+            <el-button @click="closeUpdateDialog">关闭</el-button>
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="update-dialog-content">
+        <div class="update-idle">
+          <p>正在初始化更新检查...</p>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -286,6 +405,13 @@ import type {
   AdvancedConfig
 } from '@shared/types/config'
 import {
+  UpdateState,
+  type UpdateInfo,
+  type UpdateProgress,
+  type UpdateError,
+  type UpdateConfig
+} from '@shared/types/update'
+import {
   Setting,
   Brush,
   DataLine,
@@ -293,7 +419,12 @@ import {
   Key,
   InfoFilled,
   Box,
-  Refresh
+  Refresh,
+  Download,
+  Loading,
+  Check,
+  Warning,
+  Close
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAppStore } from '../stores/app'
@@ -319,13 +450,22 @@ const gitRepoInfo = ref<{
   hasChanges: boolean
 } | null>(null)
 
+// 更新状态
+const updateState = ref<UpdateState>(UpdateState.IDLE)
+const updateInfo = ref<UpdateInfo | null>(null)
+const updateProgress = ref<UpdateProgress | null>(null)
+const updateError = ref<UpdateError | null>(null)
+const updateDialogVisible = ref(false)
+const updateAutoCheck = ref(true)
+
 // 设置数据 - 从配置服务加载
 const settings = reactive<Settings>({
   general: {
     language: 'zh-CN',
     startupBehavior: 'restore',
     autoSave: true,
-    autoSaveInterval: 5
+    autoSaveInterval: 5,
+    autoCheckAppUpdates: true
   },
   appearance: {
     theme: 'dark',
@@ -374,6 +514,19 @@ watch(
   }
 )
 
+// 监听自动检查更新设置变化
+watch(
+  () => settings.general.autoCheckAppUpdates,
+  async (newValue) => {
+    try {
+      await configApi.updateCategoryConfig('general', { autoCheckAppUpdates: newValue } as any)
+    } catch (error) {
+      console.error('Failed to save auto-check setting:', error)
+      ElMessage.error('保存自动检查更新设置失败')
+    }
+  }
+)
+
 // 加载配置
 const loadConfig = async () => {
   loading.value = true
@@ -382,7 +535,7 @@ const loadConfig = async () => {
     const config = configApi.config.value
     if (config) {
       // 分配各分类配置
-      settings.general = config.general
+      settings.general = { ...settings.general, ...config.general }
       settings.appearance = config.appearance
       settings.plugins = config.plugins
       settings.advanced = config.advanced
@@ -587,12 +740,197 @@ const saveShortcuts = async () => {
   }
 }
 
+// 更新相关辅助方法
+const getUpdateDialogTitle = (): string => {
+  switch (updateState.value) {
+    case UpdateState.CHECKING:
+      return '检查更新'
+    case UpdateState.AVAILABLE:
+      return '发现新版本'
+    case UpdateState.DOWNLOADING:
+      return '下载更新'
+    case UpdateState.DOWNLOADED:
+      return '更新下载完成'
+    case UpdateState.NOT_AVAILABLE:
+      return '已是最新版本'
+    case UpdateState.ERROR:
+      return '更新错误'
+    default:
+      return '更新'
+  }
+}
+
+const isUpdateInProgress = (): boolean => {
+  return [UpdateState.CHECKING, UpdateState.DOWNLOADING].includes(updateState.value)
+}
+
+const getProgressStatus = (): 'success' | 'exception' | 'warning' | undefined => {
+  if (updateState.value === UpdateState.ERROR) return 'exception'
+  if (updateState.value === UpdateState.DOWNLOADING) return undefined
+  return undefined
+}
+
+const formatBytes = (bytes: number): string => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
+const closeUpdateDialog = () => {
+  updateDialogVisible.value = false
+  // 如果不在进行中，重置状态
+  if (!isUpdateInProgress()) {
+    resetUpdateState()
+  }
+}
+
+const resetUpdateState = () => {
+  updateState.value = UpdateState.IDLE
+  updateInfo.value = null
+  updateProgress.value = null
+  updateError.value = null
+}
+
+const retryUpdate = () => {
+  resetUpdateState()
+  checkForUpdates()
+}
+
+// 检查更新 - 真实实现
 const checkForUpdates = async () => {
-  ElMessage.info('正在检查更新...')
-  // 实际应该检查应用更新
-  setTimeout(() => {
-    ElMessage.success('当前已是最新版本')
-  }, 1500)
+  try {
+    // 重置状态
+    resetUpdateState()
+    updateState.value = UpdateState.CHECKING
+    updateDialogVisible.value = true
+
+    // 调用真实的更新检查 API
+    const result = await window.api.update.checkForUpdates()
+
+    if (result?.hasUpdate) {
+      updateState.value = UpdateState.AVAILABLE
+      updateInfo.value = result
+    } else {
+      updateState.value = UpdateState.NOT_AVAILABLE
+      updateInfo.value = result || { hasUpdate: false, currentVersion: appVersion.value }
+    }
+  } catch (error: any) {
+    console.error('检查更新失败:', error)
+    updateState.value = UpdateState.ERROR
+    updateError.value = {
+      code: 'CHECK_FAILED',
+      message: error?.message || '检查更新时发生未知错误',
+      details: error
+    }
+    ElMessage.error('检查更新失败: ' + (error?.message || '未知错误'))
+  }
+}
+
+// 下载更新
+const downloadUpdate = async () => {
+  try {
+    updateState.value = UpdateState.DOWNLOADING
+    loading.value = true
+    await window.api.update.downloadUpdate()
+    // 状态将由进度事件更新
+  } catch (error: any) {
+    console.error('下载更新失败:', error)
+    updateState.value = UpdateState.ERROR
+    updateError.value = {
+      code: 'DOWNLOAD_FAILED',
+      message: error?.message || '下载更新时发生未知错误',
+      details: error
+    }
+    ElMessage.error('下载更新失败: ' + (error?.message || '未知错误'))
+  } finally {
+    loading.value = false
+  }
+}
+
+// 安装更新
+const installUpdate = async () => {
+  try {
+    await window.api.update.installUpdate()
+    // 应用将重启，无需进一步处理
+  } catch (error: any) {
+    console.error('安装更新失败:', error)
+    updateState.value = UpdateState.ERROR
+    updateError.value = {
+      code: 'INSTALL_FAILED',
+      message: error?.message || '安装更新时发生未知错误',
+      details: error
+    }
+    ElMessage.error('安装更新失败: ' + (error?.message || '未知错误'))
+  }
+}
+
+// 取消更新
+const cancelUpdate = async () => {
+  try {
+    await window.api.update.cancelUpdate()
+    resetUpdateState()
+    updateDialogVisible.value = false
+    ElMessage.info('更新已取消')
+  } catch (error: any) {
+    console.error('取消更新失败:', error)
+    ElMessage.error('取消更新失败: ' + (error?.message || '未知错误'))
+  }
+}
+
+// 设置更新事件监听器
+const setupUpdateListeners = () => {
+  // 检查更新中
+  window.electron.ipcRenderer.on('update:checking-for-update', () => {
+    updateState.value = UpdateState.CHECKING
+  })
+
+  // 有可用更新
+  window.electron.ipcRenderer.on('update:update-available', (_, info: UpdateInfo) => {
+    updateState.value = UpdateState.AVAILABLE
+    updateInfo.value = info
+  })
+
+  // 下载进度
+  window.electron.ipcRenderer.on('update:download-progress', (_, progress: UpdateProgress) => {
+    updateState.value = UpdateState.DOWNLOADING
+    updateProgress.value = progress
+  })
+
+  // 下载完成
+  window.electron.ipcRenderer.on('update:update-downloaded', () => {
+    updateState.value = UpdateState.DOWNLOADED
+    updateProgress.value = null // 清除进度
+    ElMessage.success('更新下载完成，准备安装')
+  })
+
+  // 没有可用更新
+  window.electron.ipcRenderer.on('update:update-not-available', () => {
+    updateState.value = UpdateState.NOT_AVAILABLE
+  })
+
+  // 更新错误
+  window.electron.ipcRenderer.on('update:update-error', (_, error: UpdateError) => {
+    updateState.value = UpdateState.ERROR
+    updateError.value = error
+    ElMessage.error(`更新错误: ${error.message}`)
+  })
+}
+
+// 清理更新事件监听器
+const cleanupUpdateListeners = () => {
+  const channels = [
+    'update:checking-for-update',
+    'update:update-available',
+    'update:download-progress',
+    'update:update-downloaded',
+    'update:update-not-available',
+    'update:update-error'
+  ]
+  channels.forEach((channel) => {
+    window.electron.ipcRenderer.removeAllListeners(channel)
+  })
 }
 
 const viewLicense = async () => {
@@ -640,6 +978,7 @@ const saveSettings = async () => {
 onMounted(() => {
   loadConfig()
   loadSystemInfo()
+  setupUpdateListeners()
 })
 
 // 清理
@@ -648,6 +987,8 @@ onUnmounted(() => {
   if (recordingIndex.value !== -1) {
     document.removeEventListener('keydown', handleKeyDown)
   }
+  // 清理更新事件监听器
+  cleanupUpdateListeners()
 })
 </script>
 
@@ -856,6 +1197,86 @@ onUnmounted(() => {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
+  }
+
+  // 更新对话框样式
+  .update-dialog-content {
+    .update-checking,
+    .update-available,
+    .update-downloading,
+    .update-downloaded,
+    .update-not-available,
+    .update-error,
+    .update-idle {
+      padding: 16px 0;
+    }
+
+    .update-checking {
+      text-align: center;
+      .loading-icon {
+        margin-bottom: 16px;
+        animation: spin 1s linear infinite;
+      }
+      p {
+        margin: 0;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    .update-info {
+      margin: 16px 0;
+      p {
+        margin: 8px 0;
+        strong {
+          display: inline-block;
+          width: 80px;
+          color: var(--el-text-color-secondary);
+        }
+      }
+    }
+
+    .release-notes {
+      margin: 16px 0;
+      h4 {
+        margin: 0 0 8px 0;
+        font-size: 14px;
+        color: var(--el-text-color-secondary);
+      }
+      .release-notes-content {
+        padding: 12px;
+        background-color: var(--el-fill-color-light);
+        border-radius: 6px;
+        font-size: 13px;
+        line-height: 1.5;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+    }
+
+    .download-details {
+      margin: 16px 0;
+      p {
+        margin: 4px 0;
+        font-size: 13px;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    .update-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 24px;
+    }
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 </style>

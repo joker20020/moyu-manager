@@ -1,9 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import icon from '../../resources/icon.ico?asset'
 import { IPC_CHANNELS } from '../shared/types/ipc'
-
 // Services
 import { EntityService } from './services/EntityService'
 import { FileService } from './services/FileService'
@@ -12,6 +10,7 @@ import { ConfigService } from './services/ConfigService'
 import { DashboardService } from './services/DashboardService'
 import { SystemService } from './services/SystemService'
 import { UtilsService } from './services/UtilsService'
+import { UpdateService } from './services/UpdateService'
 import { SYSTEM_EVENTS } from '../shared/types/plugins'
 
 // Service instances
@@ -22,8 +21,9 @@ let configService: ConfigService
 let dashboardService: DashboardService
 let systemService: SystemService
 let utilsService: UtilsService
+let updateService: UpdateService
 
-function createWindow(): void {
+function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
     width: 1400,
     height: 800,
@@ -32,7 +32,9 @@ function createWindow(): void {
     show: false,
     autoHideMenuBar: true,
     titleBarStyle: 'hiddenInset',
-    ...(process.platform === 'linux' ? { icon } : {}),
+    ...(process.platform === 'linux'
+      ? { icon: join(__dirname, '../../resources/icon.ico') }
+      : { icon: join(__dirname, '../../resources/icon.ico') }),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -65,9 +67,11 @@ function createWindow(): void {
       mainWindow.reload()
     })
   }
+
+  return mainWindow
 }
 
-function setupHandlers(): void {
+function setupHandlers(mainWindow?: BrowserWindow): void {
   // Initialize services - order matters for dependencies
   entityService = new EntityService()
   configService = new ConfigService()
@@ -76,6 +80,12 @@ function setupHandlers(): void {
   pluginService = new PluginService(configService, entityService, fileService)
   systemService = new SystemService()
   utilsService = new UtilsService()
+  updateService = new UpdateService()
+
+  // 设置主窗口引用（用于更新通知）
+  if (mainWindow) {
+    updateService.setMainWindow(mainWindow)
+  }
 
   // 获取插件服务的事件发射器（用于发射IPC事件）
   const pluginEventEmitter = (pluginService as any).eventEmitter
@@ -113,13 +123,6 @@ function setupHandlers(): void {
 
         // 调用原始处理器
         const result = await handler(...args)
-
-        // 发射响应事件（成功）
-        const responseEventData = {
-          ...eventData,
-          result,
-          success: true
-        }
 
         return result
       } catch (error) {
@@ -578,6 +581,29 @@ function setupHandlers(): void {
       utilsService.showSaveDialog(options)
     )
   )
+
+  ipcMain.handle(
+    IPC_CHANNELS.UPDATE.CHECK_FOR_UPDATES,
+    wrapIpcHandler(IPC_CHANNELS.UPDATE.CHECK_FOR_UPDATES, (_, options) =>
+      updateService.checkForUpdates(options)
+    )
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.UPDATE.DOWNLOAD_UPDATE,
+    wrapIpcHandler(IPC_CHANNELS.UPDATE.DOWNLOAD_UPDATE, () => updateService.downloadUpdate())
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.UPDATE.INSTALL_UPDATE,
+    wrapIpcHandler(IPC_CHANNELS.UPDATE.INSTALL_UPDATE, () => updateService.installUpdate())
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.UPDATE.GET_UPDATE_INFO,
+    wrapIpcHandler(IPC_CHANNELS.UPDATE.GET_UPDATE_INFO, () => updateService.getUpdateInfo())
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.UPDATE.CANCEL_UPDATE,
+    wrapIpcHandler(IPC_CHANNELS.UPDATE.CANCEL_UPDATE, () => updateService.cancelUpdate())
+  )
 }
 
 app.whenReady().then(async () => {
@@ -588,9 +614,6 @@ app.whenReady().then(async () => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  // Setup IPC handlers
-  setupHandlers()
-
   const recentFiles = await fileService.getRecentFiles()
   if (recentFiles.length > 0) {
     const latestFile = recentFiles[0]
@@ -599,7 +622,22 @@ app.whenReady().then(async () => {
     })
   }
 
-  createWindow()
+  // Setup IPC handlers
+  const mainWindow = createWindow()
+  setupHandlers(mainWindow)
+
+  // 延迟执行自动更新检查（避免影响应用启动速度）
+  setTimeout(async () => {
+    try {
+      const autoCheckEnabled = await configService.get('update.autoCheck', true)
+      if (autoCheckEnabled && updateService) {
+        console.log('[Main] 执行自动更新检查...')
+        await updateService.checkForUpdates({ silent: true })
+      }
+    } catch (error) {
+      console.error('[Main] 自动更新检查失败:', error)
+    }
+  }, 10000) // 10秒后检查
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
