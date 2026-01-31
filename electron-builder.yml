@@ -14,7 +14,7 @@ asarUnpack:
 fileAssociations:
   description: entity-file
   ext: em
-  icon: build/icons/png/512x512.png
+  icon: build/file.png
 win:
   executableName: moyu-manager
   icon: build/icons/win/icon.ico
