@@ -40,11 +40,12 @@ function createWindow(): BrowserWindow {
       sandbox: false,
       contextIsolation: true,
       nodeIntegration: false
-    }
+    },
   })
 
   // 完全禁用Electron默认菜单，使用自定义菜单
   mainWindow.setMenu(null)
+  mainWindow.setTitle('moyu-manager')
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
