@@ -11,15 +11,22 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 asarUnpack:
   - resources/**
+fileAssociations:
+  description: entity-file
+  ext: em
+  icon: build/icons/png/512x512.png
 win:
   executableName: moyu-manager
+  icon: build/icons/win/icon.ico
 nsis:
+  oneClick: false
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
   installerIcon: resources/icon.ico
   uninstallerIcon: resources/icon.ico
+  allowToChangeInstallationDirectory: true
 mac:
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
@@ -28,6 +35,7 @@ mac:
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   notarize: false
+  icon: build/icons/mac/icon.icns
 dmg:
   artifactName: ${name}-${version}.${ext}
 linux:
@@ -37,6 +45,7 @@ linux:
     - deb
   maintainer: electronjs.org
   category: Utility
+  icon: build/icons/png/512x512.png
 appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
