@@ -120,7 +120,7 @@
                       <el-icon v-if="getEntityTypeIcon(row._type)" class="entity-icon">
                         <component :is="getEntityTypeIcon(row._type)" />
                       </el-icon>
-                      <span>{{ row.name }}</span>
+                      <span v-html="highlightSearchText(row.name)" />
                     </div>
                   </template>
                 </el-table-column>
@@ -1209,6 +1209,59 @@ const getEntityFieldsData = (entity: EntityInstance) => {
   }))
 }
 
+const highlightSearchText = (text: string): string => {
+  if (!searchQuery.value || !text) return String(text)
+  const query = searchQuery.value.toLowerCase()
+  const textStr = String(text)
+  const lowerText = textStr.toLowerCase()
+  const index = lowerText.indexOf(query)
+  if (index === -1) return textStr
+
+  // 转义HTML并构建原始位置到转义位置的映射
+  let escapedText = ''
+  const originalToEscaped: number[] = new Array(textStr.length + 1)
+
+  for (let i = 0; i < textStr.length; i++) {
+    // 记录当前原始位置对应的转义文本起始位置
+    originalToEscaped[i] = escapedText.length
+
+    const char = textStr[i]
+    switch (char) {
+      case '&':
+        escapedText += '&amp;'
+        break
+      case '<':
+        escapedText += '&lt;'
+        break
+      case '>':
+        escapedText += '&gt;'
+        break
+      case '"':
+        escapedText += '&quot;'
+        break
+      case "'":
+        escapedText += '&#39;'
+        break
+      default:
+        escapedText += char
+    }
+  }
+  // 最后一个位置：转义文本的总长度
+  originalToEscaped[textStr.length] = escapedText.length
+
+  // 计算转义文本中的匹配位置
+  const escapedStart = originalToEscaped[index]
+  const escapedEnd = originalToEscaped[index + query.length]
+
+  const highlighted =
+    escapedText.substring(0, escapedStart) +
+    '<mark>' +
+    escapedText.substring(escapedStart, escapedEnd) +
+    '</mark>' +
+    escapedText.substring(escapedEnd)
+  return highlighted
+}
+
 // 初始化加载数据
 onMounted(() => {
   store.refreshEntities()
@@ -1531,5 +1584,10 @@ onMounted(() => {
       margin-bottom: 0;
     }
   }
+}
+mark {
+  background-color: #ffeb3b;
+  padding: 0 2px;
+  border-radius: 2px;
 }
 </style>

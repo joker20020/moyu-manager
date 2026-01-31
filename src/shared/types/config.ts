@@ -1,14 +1,13 @@
 // 配置管理系统类型定义
-// 版本: 2.0.0 - 结构化配置升级
+// 版本: 2.0.0 - 结构化配置
 
 // ==================== 配置版本控制 ====================
 
 /**
  * 配置版本标识符
- * - '1.0': 原始简单配置（theme, language, autoSave等）
- * - '2.0': 结构化配置（包含所有SettingsView.vue中的设置）
+ * - '2.0': 当前结构化配置（包含所有SettingsView.vue中的设置）
  */
-export type ConfigVersion = '1.0' | '2.0'
+export type ConfigVersion = '2.0'
 
 // ==================== 配置类别定义 ====================
 
@@ -154,13 +153,7 @@ export interface AppConfigV2 {
   advanced: AdvancedConfig
   shortcuts: ShortcutConfig[]
 
-  // 不再兼容V1配置
-  // theme: string
-  // language: string
-  // autoSave: boolean
-  // autoSaveInterval: number
   recentFiles: string[]
-  // pluginsLegacy: Record<string, any>
 
   // 扩展字段（用于未来扩展）
   meta?: {
@@ -171,19 +164,6 @@ export interface AppConfigV2 {
     /** 配置文件路径 */
     configPath: string
   }
-}
-
-/**
- * @deprecated 已废弃的V1配置结构（版本1.0）
- * 仅用于内部迁移使用
- */
-export interface DeprecatedAppConfigV1 {
-  theme: string
-  language: string
-  autoSave: boolean
-  autoSaveInterval: number
-  recentFiles: string[]
-  plugins: Record<string, any>
 }
 
 // ==================== 配置类型守卫和辅助函数 ====================
@@ -283,66 +263,6 @@ export function getDefaultAppConfigV2(): AppConfigV2 {
       configPath: ''
     }
   }
-}
-
-/**
- * 从已废弃的V1配置迁移到V2配置（内部使用）
- */
-export function migrateV1ToV2(v1Config: DeprecatedAppConfigV1, uiSettings?: any): AppConfigV2 {
-  const defaultConfig = getDefaultAppConfigV2()
-
-  // 创建V2配置，从V1配置复制字段
-  const v2Config: AppConfigV2 = {
-    ...defaultConfig,
-    recentFiles: v1Config.recentFiles,
-
-    // 更新结构化配置中的对应字段
-    general: {
-      ...defaultConfig.general,
-      language: v1Config.language,
-      autoSave: v1Config.autoSave,
-      autoSaveInterval: Math.floor(v1Config.autoSaveInterval / 60000) // 毫秒转分钟
-    },
-
-    appearance: {
-      ...defaultConfig.appearance,
-      theme: v1Config.theme as 'dark' | 'light' | 'auto'
-    }
-  }
-
-  // 如果存在uiSettings，合并到结构化配置中
-  if (uiSettings && typeof uiSettings === 'object') {
-    // 深度合并uiSettings到对应配置类别
-    const mergeConfig = (target: any, source: any, path: string[] = []) => {
-      if (source && typeof source === 'object' && !Array.isArray(source)) {
-        Object.keys(source).forEach((key) => {
-          const fullPath = [...path, key]
-          if (target[key] !== undefined && typeof source[key] === typeof target[key]) {
-            if (
-              typeof source[key] === 'object' &&
-              source[key] !== null &&
-              !Array.isArray(source[key])
-            ) {
-              mergeConfig(target[key], source[key], fullPath)
-            } else {
-              target[key] = source[key]
-            }
-          }
-        })
-      }
-    }
-
-    mergeConfig(v2Config, uiSettings)
-  }
-
-  // 更新时间戳
-  v2Config.meta = {
-    ...v2Config.meta!,
-    updatedAt: Date.now(),
-    createdAt: v2Config.meta?.createdAt || Date.now()
-  }
-
-  return v2Config
 }
 
 /**

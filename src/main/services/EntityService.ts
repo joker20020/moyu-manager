@@ -2,6 +2,7 @@ import type { EntityType, EntityInstance, EntityQuery } from '../../shared/types
 import { FIXED_FIELDS } from '../../shared/types/entities'
 import * as fs from 'fs/promises'
 import { SystemService } from './SystemService'
+import Fuse from 'fuse.js'
 
 export class EntityService {
   // In-memory storage
@@ -267,13 +268,50 @@ export class EntityService {
 
   // Search and count
   search(query: string): EntityInstance[] {
-    const searchLower = query.toLowerCase()
-    return Array.from(this.entityInstances.values()).filter((instance) => {
-      return Object.entries(instance).some(([key, value]) => {
-        if (key.startsWith('_')) return false
-        return String(value).toLowerCase().includes(searchLower)
+    // 空查询返回空结果
+    if (!query.trim()) {
+      return []
+    }
+
+    const entities = Array.from(this.entityInstances.values())
+    if (entities.length === 0) {
+      return []
+    }
+
+    // 收集所有非系统字段（不以_开头）
+    const fieldSet = new Set<string>()
+    entities.forEach((entity) => {
+      Object.keys(entity).forEach((key) => {
+        if (!key.startsWith('_')) {
+          fieldSet.add(key)
+        }
       })
     })
+
+    const keys = Array.from(fieldSet)
+
+    // 如果没有任何可搜索字段，返回空结果
+    if (keys.length === 0) {
+      return []
+    }
+
+    // 配置Fuse.js选项
+    const options = {
+      keys,
+      includeScore: true,
+      threshold: 0.4, // 模糊匹配阈值，值越小越严格
+      ignoreLocation: false,
+      minMatchCharLength: 1,
+      shouldSort: true,
+      // 字段权重：name字段权重更高
+      fieldNormWeight: 1
+    }
+
+    const fuse = new Fuse(entities, options)
+    const results = fuse.search(query)
+
+    // 返回原始实体（不带Fuse的包装对象）
+    return results.map((result) => result.item)
   }
 
   count(query?: EntityQuery): number {

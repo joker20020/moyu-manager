@@ -1,6 +1,5 @@
 import { ref, computed, type DeepReadonly, toRaw } from 'vue'
 import type { AppConfigV2, ConfigCategory } from '@shared/types/config'
-import { update } from 'lodash'
 
 /**
  * Configuration composable for type-safe access to structured application configuration.
@@ -9,12 +8,13 @@ import { update } from 'lodash'
 const config = ref<AppConfigV2 | null>(null)
 const isLoading = ref(true)
 const error = ref<Error | null>(null)
+
 export function useConfig() {
   async function loadConfig(): Promise<void> {
     try {
       isLoading.value = true
       error.value = null
-      const fullConfig = await window.api.config.get('uiSettings')
+      const fullConfig = await window.api.config.get('')
       config.value = fullConfig as AppConfigV2
     } catch (err) {
       error.value = err instanceof Error ? err : new Error(String(err))
@@ -27,6 +27,9 @@ export function useConfig() {
   async function saveConfig(): Promise<void> {
     if (!config.value) return
     try {
+      // 同步recentFiles
+      const recentFiles = await window.api.config.get<Array<string>>('recentFiles', [])
+      config.value.recentFiles = recentFiles
       const configRaw = toRaw(config.value)
       for (const key in configRaw) {
         configRaw[key] = toRaw(configRaw[key])
@@ -40,7 +43,7 @@ export function useConfig() {
         }
       }
       console.log('Saving configuration:', configRaw)
-      await window.api.config.set('uiSettings', configRaw)
+      await window.api.config.set('', configRaw)
     } catch (err) {
       console.error('Failed to save configuration:', err)
       throw err
