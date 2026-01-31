@@ -46,6 +46,9 @@ export class ConfigService {
   }
 
   async get<T = any>(key: string, defaultValue?: T): Promise<T> {
+    if (key === '') {
+      return this.store.store as T
+    }
     const value = this.store.get(key as any)
 
     if (value === undefined) {

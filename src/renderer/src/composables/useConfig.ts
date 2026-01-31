@@ -16,6 +16,7 @@ export function useConfig() {
       error.value = null
       const fullConfig = await window.api.config.get('')
       config.value = fullConfig as AppConfigV2
+      console.log('Loaded configuration:', fullConfig)
     } catch (err) {
       error.value = err instanceof Error ? err : new Error(String(err))
       console.error('Failed to load configuration:', err)

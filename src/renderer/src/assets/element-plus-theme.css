@@ -98,6 +98,9 @@
 .el-button {
   border-radius: var(--el-border-radius-base);
 }
+.el-tag{
+  --el-color-primary: #edecf3;
+}
 
 .el-input,
 .el-select,

@@ -99,7 +99,6 @@ export class FileService {
   async open(filePath?: string): Promise<boolean> {
     try {
       let targetPath = filePath
-      console.log('Opening file:', targetPath)
       if (!targetPath) {
         const result = await dialog.showOpenDialog({
           title: '打开 .em 文件',
