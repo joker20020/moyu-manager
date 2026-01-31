@@ -8,322 +8,12 @@
 
 </div>
 
-## English Version
-
-### Project Overview
-
-Entity Manager is a modern desktop application built with Electron, Vue 3, and TypeScript for managing structured entity data. Designed with inspiration from VS Code and Obsidian, it provides a flexible, extensible platform for organizing and analyzing various types of entities (tasks, contacts, projects, etc.) with a powerful plugin system.
-
-### Key Features
-
-- **Flexible Entity Management**: Create custom entity types with configurable fields and complete CRUD operations
-- **Advanced Plugin System**: Extend functionality with secure, sandboxed plugins similar to VS Code extensions
-- **Dashboard System**: Create customizable data visualization dashboards with ECharts integration
-- **Custom File Format**: Save complete application state to `.em` files for easy backup and sharing
-- **Modern UI/UX**: Clean, professional interface with dark/light theme support and responsive design
-- **Cross-Platform**: Available for Windows, macOS, and Linux
-
-### Technology Stack
-
-| Layer                  | Technology                                    |
-| ---------------------- | --------------------------------------------- |
-| **Desktop Framework**  | Electron (Main/Renderer Process Architecture) |
-| **Frontend Framework** | Vue 3 + TypeScript + Composition API          |
-| **UI Components**      | ElementPlus + Custom SCSS Styling             |
-| **Build Tools**        | Vite + Electron Builder                       |
-| **Data Visualization** | ECharts + Vue-ECharts                         |
-| **State Management**   | Pinia                                         |
-| **Routing**            | Vue Router                                    |
-| **Configuration**      | Electron Conf + Custom Config Service         |
-
-### Getting Started
-
-#### Prerequisites
-
-- Node.js 18+ and npm/yarn/pnpm
-- Git (for development)
-
-#### Installation
-
-```bash
-# Clone the repository
-git clone <repository-url>
-cd entity-manager
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-
-#### Development Commands
-
-```bash
-# Development mode
-npm run dev
-
-# Type checking
-npm run typecheck
-
-# Linting
-npm run lint
-
-# Formatting
-npm run format
-
-# Build for specific platform
-npm run build:win    # Windows
-npm run build:mac    # macOS
-npm run build:linux  # Linux
-```
-
-#### Project Structure
-
-```
-entity-manager/
-├── src/
-│   ├── main/              # Electron main process
-│   │   ├── services/      # Core services (Entity, Plugin, File, etc.)
-│   │   └── index.ts       # Main process entry
-│   ├── renderer/          # Vue frontend
-│   │   ├── components/    # Vue components
-│   │   ├── views/         # Page components
-│   │   ├── stores/        # Pinia stores
-│   │   └── router/        # Vue Router configuration
-│   └── shared/            # Shared code between processes
-│       └── types/         # TypeScript type definitions
-├── plugins/               # Plugin directories
-│   ├── system/           # System plugins
-│   ├── user/             # User-installed plugins
-│   └── dev/              # Development plugins
-├── test-plugin-source/   # Example plugins for development
-├── test/                 # Test files
-└── build/                # Build configuration
-```
-
-### Plugin Development
-
-Entity Manager features a powerful, secure plugin system that allows developers to extend functionality similar to VS Code extensions.
-
-#### Plugin Architecture
-
-The plugin system is built with security and extensibility in mind:
-
-- **Sandbox Execution**: Plugins run in isolated Node.js vm environments
-- **Permission System**: Granular permission controls for API access
-- **Event System**: Subscribe to and emit application events
-- **Complete Lifecycle**: UNLOADED → LOADED → INITIALIZED → ACTIVE → INACTIVE states
-- **Plugin Context**: Limited API access through `PluginContext`
-
-#### Creating a Plugin
-
-1. **Create Plugin Structure**:
-
-   ```bash
-   mkdir -p plugins/dev/my-plugin
-   cd plugins/dev/my-plugin
-   ```
-
-2. **Create `plugin.json`**:
-
-   ```json
-   {
-    "id": "my-plugin",
-    "name": "My Plugin",
-    "version": "1.0.0",
-    "description": "A sample plugin for Entity Manager",
-    "homepage": "https://github.com/example/entity-manager",
-    "repository": "https://github.com/example/entity-manager-plugins",
-    "author": "Your Name",
-    "permissions": ["entities:read", "config:read", "ui:show"],
-    "commands": [
-      {
-        "id": "my-plugin.say-hello",
-        "name": "Say Hello",
-        "description": "Display a hello message"
-      }
-    ]
-   }
-   ```
-
-3. **Create `index.js`**:
-
-   ```javascript
-   // Main plugin module
-   async function activate(context) {
-     console.log('My plugin is activating...')
-
-     // Access to entities
-     const entities = await context.entities.getEntities()
-     console.log(`Found ${entities.length} entities`)
-
-     // Subscribe to events
-     const eventSubscription = context.events.on('entity:created', (data) => {
-       console.log('New entity created:', data)
-     })
-
-     // Store for cleanup
-     return { eventSubscription }
-   }
-
-   async function deactivate(context) {
-     console.log('My plugin is deactivating...')
-     // Clean up resources
-   }
-
-   module.exports = { activate, deactivate }
-   ```
-
-#### Plugin API Reference
-
-| API Module         | Description       | Key Methods                                                           |
-| ------------------ | ----------------- | --------------------------------------------------------------------- |
-| `context.entities` | Entity management | `getEntities()`, `createEntity()`, `updateEntity()`, `deleteEntity()` |
-| `context.files`    | File operations   | `read()`, `write()`, `list()`                                         |
-| `context.config`   | Configuration     | `get()`, `set()`, `delete()`                                          |
-| `context.ui`       | User interface    | `showNotification()`, `showDialog()`, `createView()`                  |
-| `context.storage`  | Plugin storage    | `get()`, `set()`, `delete()`                                          |
-| `context.logger`   | Logging           | `debug()`, `info()`, `warn()`, `error()`                              |
-| `context.events`   | Event system      | `on()`, `off()`, `emit()`                                             |
-| `context.utils`    | Utilities         | `generateId()`, `formatDate()`, `sleep()`                             |
-
-#### Example Plugin
-
-Check out the complete example plugin in `test-plugin-source/entity-stats-plugin/` which demonstrates:
-
-- Complete lifecycle management
-- Event subscription
-- Configuration management
-- Command registration
-- Storage usage
-- Best practices
-
-#### Testing Plugins
-
-```bash
-# Run plugin tests
-npx ts-node test/example-plugin-test/entity-stats-plugin.test.ts
-```
-
-### Core Services
-
-#### Entity Service
-
-- Create, read, update, delete entities
-- Define custom entity types with configurable fields
-- Search and filter capabilities
-- Import/export functionality
-
-#### File Service
-
-- `.em` file format (custom compressed format with `data.json` and `meta.json`)
-- Recent files tracking
-- Auto-save functionality
-- Export to various formats (CSV, JSON)
-
-#### Plugin Service
-
-- Plugin discovery and loading
-- Lifecycle management
-- Permission system
-- Event system integration
-- Sandbox execution
-
-#### Dashboard Service
-
-- Customizable dashboard layouts
-- Widget system with various chart types
-- Template system
-- Real-time data updates
-
-#### Config Service
-
-- Application-wide configuration
-- Theme management (dark/light)
-- Plugin-specific settings
-- Configuration import/export
-
-### File Format
-
-Entity Manager uses a custom `.em` file format that contains:
-
-- `meta.json`: Metadata about the data file (version, name, entity types, etc.)
-- `data.json`: Actual entity data, settings, and dashboards
-
-Example structure:
-
-```json
-// meta.json
-{
-  "version": "1.0.0",
-  "name": "Project Data",
-  "created": 1640995200000,
-  "entityTypes": [
-    {
-      "id": "task",
-      "name": "Task",
-      "customFields": [
-        { "id": "priority", "name": "Priority", "type": "select", "options": ["High", "Medium", "Low"] }
-      ]
-    }
-  ]
-}
-
-// data.json
-{
-  "entities": [
-    {
-      "_type": "task",
-      "_id": "task_001",
-      "name": "Design Database",
-      "priority": "High",
-      "createdAt": 1640995200000
-    }
-  ],
-  "settings": {},
-  "dashboards": []
-}
-```
-
-### Development Guidelines
-
-#### Code Style
-
-- Follow TypeScript strict mode
-- Use Composition API with `<script setup>` syntax
-- Follow ElementPlus component patterns
-- Use SCSS for styling with CSS custom properties
-
-#### Architecture Patterns
-
-- Main process handles all business logic
-- IPC for communication between processes
-- Services for different domains (Entity, Plugin, File, etc.)
-- Event-driven design for extensibility
-
-#### Testing
-
-- Unit tests for services
-- Integration tests for IPC
-- Plugin system tests
-- End-to-end testing for critical paths
-
-### Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
----
-
-## 中文版本
+![entity-page](./resources/entity-page.png)
+![dashboard-page](./resources/dashboard-page.png)
+![dashboard-page2](./resources/dashboard-page2.png)
+![dashboard-page3](./resources/dashboard-page3.png)
+
+## 中文
 
 ### 项目概述
 
@@ -635,3 +325,318 @@ Entity Manager 使用自定义的 `.em` 文件格式，包含：
 ### 许可证
 
 本项目采用 MIT 许可证 - 详见 LICENSE 文件。
+
+---
+
+## English
+
+### Project Overview
+
+Entity Manager is a modern desktop application built with Electron, Vue 3, and TypeScript for managing structured entity data. Designed with inspiration from VS Code and Obsidian, it provides a flexible, extensible platform for organizing and analyzing various types of entities (tasks, contacts, projects, etc.) with a powerful plugin system.
+
+### Key Features
+
+- **Flexible Entity Management**: Create custom entity types with configurable fields and complete CRUD operations
+- **Advanced Plugin System**: Extend functionality with secure, sandboxed plugins similar to VS Code extensions
+- **Dashboard System**: Create customizable data visualization dashboards with ECharts integration
+- **Custom File Format**: Save complete application state to `.em` files for easy backup and sharing
+- **Modern UI/UX**: Clean, professional interface with dark/light theme support and responsive design
+- **Cross-Platform**: Available for Windows, macOS, and Linux
+
+### Technology Stack
+
+| Layer                  | Technology                                    |
+| ---------------------- | --------------------------------------------- |
+| **Desktop Framework**  | Electron (Main/Renderer Process Architecture) |
+| **Frontend Framework** | Vue 3 + TypeScript + Composition API          |
+| **UI Components**      | ElementPlus + Custom SCSS Styling             |
+| **Build Tools**        | Vite + Electron Builder                       |
+| **Data Visualization** | ECharts + Vue-ECharts                         |
+| **State Management**   | Pinia                                         |
+| **Routing**            | Vue Router                                    |
+| **Configuration**      | Electron Conf + Custom Config Service         |
+
+### Getting Started
+
+#### Prerequisites
+
+- Node.js 18+ and npm/yarn/pnpm
+- Git (for development)
+
+#### Installation
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd entity-manager
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+#### Development Commands
+
+```bash
+# Development mode
+npm run dev
+
+# Type checking
+npm run typecheck
+
+# Linting
+npm run lint
+
+# Formatting
+npm run format
+
+# Build for specific platform
+npm run build:win    # Windows
+npm run build:mac    # macOS
+npm run build:linux  # Linux
+```
+
+#### Project Structure
+
+```
+entity-manager/
+├── src/
+│   ├── main/              # Electron main process
+│   │   ├── services/      # Core services (Entity, Plugin, File, etc.)
+│   │   └── index.ts       # Main process entry
+│   ├── renderer/          # Vue frontend
+│   │   ├── components/    # Vue components
+│   │   ├── views/         # Page components
+│   │   ├── stores/        # Pinia stores
+│   │   └── router/        # Vue Router configuration
+│   └── shared/            # Shared code between processes
+│       └── types/         # TypeScript type definitions
+├── plugins/               # Plugin directories
+│   ├── system/           # System plugins
+│   ├── user/             # User-installed plugins
+│   └── dev/              # Development plugins
+├── test-plugin-source/   # Example plugins for development
+├── test/                 # Test files
+└── build/                # Build configuration
+```
+
+### Plugin Development
+
+Entity Manager features a powerful, secure plugin system that allows developers to extend functionality similar to VS Code extensions.
+
+#### Plugin Architecture
+
+The plugin system is built with security and extensibility in mind:
+
+- **Sandbox Execution**: Plugins run in isolated Node.js vm environments
+- **Permission System**: Granular permission controls for API access
+- **Event System**: Subscribe to and emit application events
+- **Complete Lifecycle**: UNLOADED → LOADED → INITIALIZED → ACTIVE → INACTIVE states
+- **Plugin Context**: Limited API access through `PluginContext`
+
+#### Creating a Plugin
+
+1. **Create Plugin Structure**:
+
+   ```bash
+   mkdir -p plugins/dev/my-plugin
+   cd plugins/dev/my-plugin
+   ```
+
+2. **Create `plugin.json`**:
+
+   ```json
+   {
+    "id": "my-plugin",
+    "name": "My Plugin",
+    "version": "1.0.0",
+    "description": "A sample plugin for Entity Manager",
+    "homepage": "https://github.com/example/entity-manager",
+    "repository": "https://github.com/example/entity-manager-plugins",
+    "author": "Your Name",
+    "permissions": ["entities:read", "config:read", "ui:show"],
+    "commands": [
+      {
+        "id": "my-plugin.say-hello",
+        "name": "Say Hello",
+        "description": "Display a hello message"
+      }
+    ]
+   }
+   ```
+
+3. **Create `index.js`**:
+
+   ```javascript
+   // Main plugin module
+   async function activate(context) {
+     console.log('My plugin is activating...')
+
+     // Access to entities
+     const entities = await context.entities.getEntities()
+     console.log(`Found ${entities.length} entities`)
+
+     // Subscribe to events
+     const eventSubscription = context.events.on('entity:created', (data) => {
+       console.log('New entity created:', data)
+     })
+
+     // Store for cleanup
+     return { eventSubscription }
+   }
+
+   async function deactivate(context) {
+     console.log('My plugin is deactivating...')
+     // Clean up resources
+   }
+
+   module.exports = { activate, deactivate }
+   ```
+
+#### Plugin API Reference
+
+| API Module         | Description       | Key Methods                                                           |
+| ------------------ | ----------------- | --------------------------------------------------------------------- |
+| `context.entities` | Entity management | `getEntities()`, `createEntity()`, `updateEntity()`, `deleteEntity()` |
+| `context.files`    | File operations   | `read()`, `write()`, `list()`                                         |
+| `context.config`   | Configuration     | `get()`, `set()`, `delete()`                                          |
+| `context.ui`       | User interface    | `showNotification()`, `showDialog()`, `createView()`                  |
+| `context.storage`  | Plugin storage    | `get()`, `set()`, `delete()`                                          |
+| `context.logger`   | Logging           | `debug()`, `info()`, `warn()`, `error()`                              |
+| `context.events`   | Event system      | `on()`, `off()`, `emit()`                                             |
+| `context.utils`    | Utilities         | `generateId()`, `formatDate()`, `sleep()`                             |
+
+#### Example Plugin
+
+Check out the complete example plugin in `test-plugin-source/entity-stats-plugin/` which demonstrates:
+
+- Complete lifecycle management
+- Event subscription
+- Configuration management
+- Command registration
+- Storage usage
+- Best practices
+
+#### Testing Plugins
+
+```bash
+# Run plugin tests
+npx ts-node test/example-plugin-test/entity-stats-plugin.test.ts
+```
+
+### Core Services
+
+#### Entity Service
+
+- Create, read, update, delete entities
+- Define custom entity types with configurable fields
+- Search and filter capabilities
+- Import/export functionality
+
+#### File Service
+
+- `.em` file format (custom compressed format with `data.json` and `meta.json`)
+- Recent files tracking
+- Auto-save functionality
+- Export to various formats (CSV, JSON)
+
+#### Plugin Service
+
+- Plugin discovery and loading
+- Lifecycle management
+- Permission system
+- Event system integration
+- Sandbox execution
+
+#### Dashboard Service
+
+- Customizable dashboard layouts
+- Widget system with various chart types
+- Template system
+- Real-time data updates
+
+#### Config Service
+
+- Application-wide configuration
+- Theme management (dark/light)
+- Plugin-specific settings
+- Configuration import/export
+
+### File Format
+
+Entity Manager uses a custom `.em` file format that contains:
+
+- `meta.json`: Metadata about the data file (version, name, entity types, etc.)
+- `data.json`: Actual entity data, settings, and dashboards
+
+Example structure:
+
+```json
+// meta.json
+{
+  "version": "1.0.0",
+  "name": "Project Data",
+  "created": 1640995200000,
+  "entityTypes": [
+    {
+      "id": "task",
+      "name": "Task",
+      "customFields": [
+        { "id": "priority", "name": "Priority", "type": "select", "options": ["High", "Medium", "Low"] }
+      ]
+    }
+  ]
+}
+
+// data.json
+{
+  "entities": [
+    {
+      "_type": "task",
+      "_id": "task_001",
+      "name": "Design Database",
+      "priority": "High",
+      "createdAt": 1640995200000
+    }
+  ],
+  "settings": {},
+  "dashboards": []
+}
+```
+
+### Development Guidelines
+
+#### Code Style
+
+- Follow TypeScript strict mode
+- Use Composition API with `<script setup>` syntax
+- Follow ElementPlus component patterns
+- Use SCSS for styling with CSS custom properties
+
+#### Architecture Patterns
+
+- Main process handles all business logic
+- IPC for communication between processes
+- Services for different domains (Entity, Plugin, File, etc.)
+- Event-driven design for extensibility
+
+#### Testing
+
+- Unit tests for services
+- Integration tests for IPC
+- Plugin system tests
+- End-to-end testing for critical paths
+
+### Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
