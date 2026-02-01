@@ -620,12 +620,26 @@ app.whenReady().then(async () => {
   const mainWindow = createWindow()
   setupHandlers(mainWindow)
 
+  // 打开最近文件
   const recentFiles = await fileService.getRecentFiles()
   if (recentFiles.length > 0) {
     const latestFile = recentFiles[0]
     fileService.open(latestFile).catch((err) => {
       console.error('Failed to open recent file on startup:', err)
     })
+  }
+
+  // 处理双击打开
+  if (process.argv.length >= 2){
+    const argv = process.argv.slice(app.isPackaged ? 1 : 2)
+    const filePath =
+      argv.find((arg) => arg.endsWith('.em')) ||
+      argv.find((arg) => arg.includes('--file'))?.split('=')[1]
+    if (filePath && filePath.endsWith('.em')){
+      fileService.open(filePath).catch((err) => {
+        console.error('Failed to open file on startup:', err)
+      })
+    }
   }
 
   // 延迟执行自动更新检查（避免影响应用启动速度）
