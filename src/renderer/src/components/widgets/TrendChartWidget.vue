@@ -325,7 +325,11 @@ async function fetchTrendData() {
     const { entities } = store
 
     // 过滤指定类型的实体
-    const filtered = entities.filter((e) => e._type === config.value.entityType)
+    console.log('entityType', config.value.entityType)
+    let filtered = entities
+    if (config.value.entityType !== 'all') {
+      filtered = entities.filter((e) => e._type === config.value.entityType)
+    }
 
     // 获取时间范围
     const now = Date.now()

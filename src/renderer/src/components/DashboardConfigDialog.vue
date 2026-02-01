@@ -29,12 +29,12 @@
               :rows="2"
             />
           </el-form-item>
-          <el-form-item label="布局方式">
+          <!-- <el-form-item label="布局方式">
             <el-select v-model="dashboardConfig.layout" style="width: 200px">
               <el-option label="网格布局" value="grid" />
               <el-option label="自由布局" value="free" />
             </el-select>
-          </el-form-item>
+          </el-form-item> -->
         </el-form>
       </div>
 
